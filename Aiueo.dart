@@ -1,56 +1,36 @@
-#import('dart:html');
-#import('dart:dom', prefix:"dom");
+import 'dart:html';
 
 class Camera {
   
-  var localVideo;
-  var localCanvas;
-  var ctx2;
-  var prevImg = null;
+  VideoElement localVideo;
+  CanvasElement localCanvas;
+  CanvasRenderingContext2D ctx2;
+  ImageData prevImg = null;
   final int threshold = 3200000;
   
   void run() {
-    localVideo = document.query("#selfView");
-    localCanvas = document.query("#localCanvas");
+    localVideo = document.querySelector('#selfView');
+    localCanvas = document.querySelector('#localCanvas');
     ctx2 = localCanvas.getContext('2d');
     startCamera();
     
   }
   
-  var flg = false;
+  bool flg = false;
   void bossIsHere() {
-    if (flg === false) {
-      document.query("#cover").style.visibility = "visible";
+    if (flg == false) {
+      document.querySelector('#cover').style.visibility = 'visible';
       flg = true;
     }
   }
   
   void startCamera() {
-    try {
-      window.navigator.webkitGetUserMedia("video user", gotStream);
-      
-      // Detect MediaStream disabled.
-      window.setTimeout(detectMediaStreamDisabled, 2 * 1000);
-      
-    } catch (var e) {
-      print(e);
-    }
+    window.navigator.getUserMedia(audio: true, video: true).then(gotStream);
   }
   
-  bool started = false;
-  
-  void gotStream(var stream) {
-    started = true;
-    localVideo.src = new dom.DOMURL().createObjectURL(stream);
+  void gotStream(stream) {
+    localVideo.src = Url.createObjectUrlFromStream(stream);
     startCanvasCopy();
-  }
-
-  void detectMediaStreamDisabled() {
-    if (started) {
-      return ;
-    }
-    
-    document.query("#error").style.visibility = "visible";
   }
 
   void startCanvasCopy() {
@@ -62,11 +42,11 @@ class Camera {
     window.requestAnimationFrame(canvasCopy);
   }
   
-  int checkDiff(var prev, var img) {
-    var pix = img.data;
-    var prevPix = prev.data;
+  int checkDiff(ImageData prev, ImageData img) {
+    List<int> pix = img.data;
+    List<int> prevPix = prev.data;
     int result = 0;
-    for (var i = 0, n = pix.length; i < n; i += 4) {
+    for (int i = 0, n = pix.length; i < n; i += 4) {
       int diffR = pix[i] - prevPix[i];
       int diffG = pix[i] - prevPix[i + 1];
       int diffB = pix[i] - prevPix[i + 2];
@@ -75,10 +55,10 @@ class Camera {
     return result;
   }
 
-  void binaryImage(var img) {
-    var pix = img.data;
-    for (var i = 0, n = pix.length; i < n; i += 4) {
-      int color = (pix[i  ] + pix[i+1] + pix[i+2]) / 3;
+  void binaryImage(ImageData img) {
+    List<int> pix = img.data;
+    for (int i = 0, n = pix.length; i < n; i += 4) {
+      num color = (pix[i  ] + pix[i+1] + pix[i+2]) / 3;
       color = (color > 100) ? 255 : 0;
       pix[i  ] = color; // red
       pix[i+1] = color; // green
@@ -87,21 +67,21 @@ class Camera {
     }
   }
   
-  var prevDiff = 0;
+  int prevDiff = 0;
   
   void renderCanvas() {
-    ctx2.drawImage(localVideo, 0, 0, 200, 200);
-    var imgd = ctx2.getImageData(0, 0, localCanvas.width, localCanvas.height);
+    ctx2.drawImageScaled(localVideo, 0, 0, 200, 150);
+    ImageData imgd = ctx2.getImageData(0, 0, localCanvas.width, localCanvas.height);
     binaryImage(imgd);
-    if (prevImg !== null) {
+    if (prevImg != null) {
       int diff = checkDiff(prevImg, imgd);
       if (prevDiff > 0 && diff > threshold) {
-        document.query('#status').innerHTML = "Boss is detected！" + diff;
+        document.querySelector('#status').innerHtml = 'Boss is detected！' + diff.toString();
         bossIsHere();
       } else {
         prevDiff = diff;
       }
-      print("diff = " + diff);
+      print('diff = ' + diff.toString());
     }
     prevImg = imgd;
     ctx2.putImageData(imgd, 0, 0);
